@@ -6,6 +6,14 @@
 
 ---
 
+## Test Results
+
+[$77 -> $0.006 Profit](https://solscan.io/tx/4ASCHbwF2q3ZeeKJgcUx93mtTwHHYwu29bmerU3KJPmGupMziqFvnQScuam8Yx4e458TSRwd9QhxC1HSiHT6EZLc#balance_change)
+
+[$77 -> $0.011 Profit](https://solscan.io/tx/4uQ4sANAv6oGoBeqE28T7CNQ1fDMX7EsduA87yhhBwpVXGyspVwHokkGa9oC11UEY7Kw6DK5sdWngHgDC7hz9GAS#balance_change)
+
+---
+
 ## Features
 
 - **Dual discovery modes**
