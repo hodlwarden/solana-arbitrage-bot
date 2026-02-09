@@ -191,21 +191,17 @@ async fn continuous_polling_loop(interval_ms: u64) {
                     );
                     
                     let min_profit = base_token_config.min_profit;
-                    
-                    // Calculate transaction cost in the base token's currency
-                    let total_tx_cost_usdc = jupiter_arbitrage_bot_offchain::engine::runtime::calculate_tx_cost_usdc(&FEES).await;
-                    let (total_tx_cost_in_token, real_profit) = if symbol == "SOL" || symbol == "WSOL" || mother_token == "So11111111111111111111111111111111111111112" {
-                        // For SOL: Convert USD transaction cost to SOL
-                        let sol_price = get_sol_price_usdc(CONFIG.tx_cost.sol_usd).await;
-                        let tx_cost_sol = total_tx_cost_usdc / sol_price;
-                        let real_profit_sol = profit_human - tx_cost_sol;
-                        (tx_cost_sol, real_profit_sol)
-                    } else {
-                        // For stablecoins (USDC, USDT, etc.): Transaction cost is already in USD
-                        let real_profit_usd = profit_human - total_tx_cost_usdc;
-                        (total_tx_cost_usdc, real_profit_usd)
-                    };
-                    
+                    let token_is_sol = symbol == "SOL" || symbol == "WSOL" || mother_token == "So11111111111111111111111111111111111111112";
+                    let gross_profit_raw = (out_amount as i64 - in_amount as i64);
+                    let (total_tx_cost_raw, tip_sol) = jupiter_arbitrage_bot_offchain::engine::runtime::calculate_tx_cost_for_trade(
+                        &FEES,
+                        gross_profit_raw,
+                        token_is_sol,
+                        decimal,
+                    ).await;
+                    let total_tx_cost_in_token = total_tx_cost_raw as f64 / 10_f64.powf(decimal as f64);
+                    let real_profit = profit_human - total_tx_cost_in_token;
+
                     if real_profit >= min_profit {
                         info!(
                             %symbol,
@@ -217,7 +213,7 @@ async fn continuous_polling_loop(interval_ms: u64) {
                             "Submitting trade"
                         );
                         tokio::spawn(async move {
-                            submit_polling_trade(in_res, out_res, min_profit, decimal).await;
+                            submit_polling_trade(in_res, out_res, min_profit, decimal, tip_sol).await;
                         });
                     }
                 }
@@ -226,12 +222,13 @@ async fn continuous_polling_loop(interval_ms: u64) {
     }
 }
 
-/// Submit a trade from polling mode
+/// Submit a trade from polling mode. `tip_sol` is the third-party fee (fixed or profit-based) to attach.
 async fn submit_polling_trade(
     in_res: jupiter_swap_api_client::quote::QuoteResponse,
     out_res: jupiter_swap_api_client::quote::QuoteResponse,
     min_profit_amount: f64,
     decimal: u8,
+    tip_sol: f64,
 ) {
     let instr_advance_nonce_account = advance_nonce_account(&NONCE_ADDR, &PUBKEY);
     
@@ -272,7 +269,7 @@ async fn submit_polling_trade(
 
     ultra_submit(
         Tips {
-            tip_sol_amount: FEES.tip_sol,
+            tip_sol_amount: tip_sol,
             tip_addr_idx: 0,
             cu: Some(FEES.compute_units),
             priority_fee_micro_lamport: Some(FEES.priority_lamports),

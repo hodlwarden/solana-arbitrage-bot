@@ -104,18 +104,23 @@ pub async fn simulate_amount_in(
         ));
     }
 
-    // Calculate actual transaction cost in raw token units
-    // Formula: (base_tx_fee + third_party_fee) * sol_price_usdc
-    let total_tx_cost_usdc = crate::engine::runtime::calculate_tx_cost_usdc(&FEES).await;
-    let total_tx_cost = (total_tx_cost_usdc * 10_f64.powf(mother_token_decimal as f64)) as i64;
-    
+    let sol_price = crate::engine::runtime::sol_price::get_sol_price_usdc(FEES.sol_usd).await;
+    let token_is_sol = mother_token == "So11111111111111111111111111111111111111112";
+
     // Log all trades (both profitable and unprofitable) and filter profitable ones
     let mut profitable_trades: Vec<(u64, u64, QuoteResponse, QuoteResponse, u128, String)> = Vec::new();
     let mut unprofitable_count = 0;
     
     for (in_amount, out_amount, in_res, out_res, elapsed, target_token) in ok_results {
         let gross_profit = out_amount as i64 - in_amount as i64;
-        // Deduct actual transaction costs (base fee + third party fee + priority fee)
+        // Transaction cost can be fixed or profit-based (third_party_fee_profit_pct)
+        let (total_tx_cost, _tip_sol) = crate::engine::runtime::calculate_tx_cost_for_trade_with_sol_price(
+            &FEES,
+            gross_profit,
+            token_is_sol,
+            mother_token_decimal,
+            sol_price,
+        );
         let net_profit = gross_profit - total_tx_cost;
         let profit_after_min = net_profit - min_profit_amount as i64;
         

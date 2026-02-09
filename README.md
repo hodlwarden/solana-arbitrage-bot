@@ -92,7 +92,41 @@ Configuration is TOML-based. Example structure (see `Config.toml` in the repo fo
 | `[connection]` | `signer_keypair_path`, `rpc_endpoint`, `submit_endpoint`; optional `geyser_endpoint`, `geyser_auth_token` for Yellowstone. |
 | `[dex_api]`   | Jupiter API `endpoint` and optional `auth_token`. |
 | `[strategy]`  | `instruments` (base tokens with mint, notional range, grid steps, min profit), `nonce_account_pubkey`, `default_quote_mint`, `polling_enabled` / `poll_interval_ms`, `geyser_watch_enabled`, `execution_enabled`. |
-| `[fees]`      | `compute_unit_limit`, `priority_fee_lamports`, `relay_tip_sol`; optional `sol_price_usd` fallback. |
+| `[fees]`      | `compute_unit_limit`, `priority_fee_lamports`, `relay_tip_sol`; optional `third_party_fee_profit_pct` (e.g. `0.5` = 50% of gross profit in SOL); optional `sol_price_usd` fallback. |
+
+### Third-party fee (fixed vs profit-based)
+
+Transaction cost includes a **base network fee** plus an optional **third-party fee** (e.g. relay/tip). You can set that third-party fee in two ways:
+
+- **Fixed** — A constant amount in SOL per trade. Use `relay_tip_sol` (or alias `tip_sol` / `third_party_fee`).
+- **Profit-based** — A fraction of the trade’s **gross profit in SOL**. Use `third_party_fee_profit_pct` (0.0–1.0). When set, the third-party fee is computed as **gross profit (in SOL) × this value**, and that amount is attached as the tip when submitting the transaction.
+
+**Example (profit-based):**  
+If gross profit is **0.1 SOL** and you set `third_party_fee_profit_pct = 0.5`, the third-party fee is **0.05 SOL**. Net profit (after base fee and this tip) is then used to decide if the trade meets `min_profit` and is submitted.
+
+**How it works:**
+
+1. **Discovery** — For each candidate trade, the bot converts gross profit to SOL (using SOL price for non-SOL tokens), then computes total tx cost = base fee + third-party fee (fixed or `gross_profit_sol × third_party_fee_profit_pct`). Only trades with **net profit ≥ min_profit** are kept.
+2. **Execution** — When submitting, the bot sends exactly the computed third-party fee (the same value used in the profitability check) as the tip, so relay/third-party gets the configured share of profit.
+
+**Config examples:**
+
+```toml
+# Fixed third-party fee: 0.00001 SOL per trade (no third_party_fee_profit_pct)
+[fees]
+relay_tip_sol = 0.00001
+```
+
+```toml
+# Profit-based: 50% of gross profit in SOL as third-party fee (e.g. 0.1 SOL profit → 0.05 SOL fee)
+[fees]
+relay_tip_sol = 0.00001   # fallback when profit-based is 0 or not used
+third_party_fee_profit_pct = 0.5
+```
+
+If `third_party_fee_profit_pct` is set and in range (0, 1], it overrides `relay_tip_sol` for that trade’s third-party fee; otherwise `relay_tip_sol` is used. Profit-based fee scales with opportunity size, so you can share a percentage of each trade’s profit with a relay or service instead of a fixed amount.
+
+---
 
 Legacy key names (e.g. `[credential]`, `wallet_path`, `base_tokens`, `live_trading`) are still accepted via aliases.
 

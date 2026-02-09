@@ -147,26 +147,42 @@ pub async fn process_single_trade_yellowstone(sub_update: yellowstone_grpc_proto
         return;
     }
 
-    // Select only the most profitable trade (highest net profit after fees)
-    // Calculate actual transaction cost: base_tx_fee + third_party_fee
-    let total_tx_cost_usdc = crate::engine::runtime::calculate_tx_cost_usdc(&FEES).await;
-    let total_tx_cost = (total_tx_cost_usdc * 10_f64.powf(mother_token.1 as f64)) as i64;
-    
-    let most_profitable = quote_data
+    let sol_price = crate::engine::runtime::get_sol_price_usdc(FEES.sol_usd).await;
+    let token_is_sol = mother_token.0 == "So11111111111111111111111111111111111111112";
+
+    // Per-trade tx cost (and tip for submission) when using profit-based third-party fee
+    let with_costs: Vec<(u64, u64, _, _, u128, String, i64, f64)> = quote_data
         .into_iter()
-        .max_by_key(|(in_amount, out_amount, _, _, _, _)| {
-            let gross_profit = *out_amount as i64 - *in_amount as i64;
-            gross_profit - total_tx_cost  // Use net profit for comparison
+        .map(|(in_amount, out_amount, in_res, out_res, elapsed, target_token)| {
+            let gross_profit = out_amount as i64 - in_amount as i64;
+            let (total_tx_cost, tip_sol) =
+                crate::engine::runtime::calculate_tx_cost_for_trade_with_sol_price(
+                    &FEES,
+                    gross_profit,
+                    token_is_sol,
+                    mother_token.1,
+                    sol_price,
+                );
+            (in_amount, out_amount, in_res, out_res, elapsed, target_token, total_tx_cost, tip_sol)
+        })
+        .collect();
+
+    let best = with_costs
+        .into_iter()
+        .max_by_key(|(in_amount, out_amount, _, _, _, _, total_tx_cost, _)| {
+            *out_amount as i64 - *in_amount as i64 - *total_tx_cost
         });
-    
-    let (in_amount, out_amount, in_res, out_res, _elapsed, _target_token) = match most_profitable {
-        Some(trade) => trade,
-        None => return, // Should not happen since we checked empty above
-    };
-    
-    // Calculate profit accounting for actual transaction fees
+    let (in_amount, out_amount, in_res, out_res, _elapsed, _target_token, total_tx_cost, tip_sol_for_submit) =
+        match best {
+            Some(t) => t,
+            None => return,
+        };
+
     let gross_profit = out_amount as i64 - in_amount as i64;
     let net_profit = gross_profit - total_tx_cost;
+    let pow_dec = 10_f64.powf(mother_token.1 as f64);
+    let total_tx_cost_usdc =
+        (total_tx_cost as f64 / pow_dec) * if token_is_sol { sol_price } else { 1.0 };
     
     // Log big trade with profitable opportunity found
     let timestamp = Utc::now().format("%Y-%m-%d %H:%M:%S%.3f");
@@ -226,15 +242,16 @@ pub async fn process_single_trade_yellowstone(sub_update: yellowstone_grpc_proto
     let log_tx_id = tx_id.clone();
     let log_mother_token_symbol = mother_token.5.clone();
     
+    let tip_sol_submit = tip_sol_for_submit;
     let tasks = std::iter::once((in_amount, out_amount, in_res, out_res, _elapsed, _target_token))
         .map(|(_in_amount, _out_amount, in_res, out_res, _elapsed, _target_token)| {
-            // Capture logging variables
             let log_in_amount = log_in_amount;
             let log_out_amount = log_out_amount;
             let log_total_tx_cost = log_total_tx_cost;
             let log_tx_id = log_tx_id.clone();
             let log_mother_token_symbol = log_mother_token_symbol.clone();
-            
+            let tip_sol_amount = tip_sol_submit;
+
             tokio::spawn(async move {
                 let instr_advance_nonce_account = advance_nonce_account(&NONCE_ADDR, &PUBKEY);
                 let ix = get_swap_ix(
@@ -276,7 +293,7 @@ pub async fn process_single_trade_yellowstone(sub_update: yellowstone_grpc_proto
 
                 ultra_submit(
                     Tips {
-                        tip_sol_amount: FEES.tip_sol,
+                        tip_sol_amount,
                         tip_addr_idx: 0,
                         cu: Some(FEES.compute_units),
                         priority_fee_micro_lamport: Some(FEES.priority_lamports),
