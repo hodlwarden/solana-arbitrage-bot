@@ -1,0 +1,68 @@
+# =============================================================================
+# Solana Arbitrage Bot — Example configuration
+# =============================================================================
+# Copy to Config.toml or settings.toml and fill in your values.
+# Do not commit real secrets. The app loads settings.toml first, then Config.toml.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# [connection] — Wallet, RPC, optional Geyser and low-latency submission
+# -----------------------------------------------------------------------------
+[connection]
+signer_keypair_path = "./id.json"
+rpc_endpoint = "https://api.mainnet-beta.solana.com"
+submit_endpoint = "https://api.mainnet-beta.solana.com"
+
+# Low-latency submission: list any of jito, helius, astralane, zeroslot, nozomi, liljit, blockrazor, bloxroute, nextblock
+# When set (with matching API keys in [dex_api]), transactions are sent via these services; otherwise RPC only.
+# submission_services = ["jito", "helius"]
+
+# Big-trades stream (Yellowstone gRPC) — required only if geyser_watch_enabled = true
+# geyser_endpoint = "http://your-geyser-host:10001"
+# geyser_auth_token = "your-geyser-token"
+
+# -----------------------------------------------------------------------------
+# [dex_api] — Jupiter API and optional keys for low-latency submission
+# -----------------------------------------------------------------------------
+[dex_api]
+endpoint = "https://quote-api.jup.ag/v6"
+auth_token = ""
+
+# API keys for low-latency submission (used when submission_services lists the service)
+# jito_api_key = ""
+# helius_api_key = ""
+# astralane_key = ""
+# zero_slot_key = ""
+# nozomi_api_key = ""
+# liljit_endpoint = "https://..."
+# blockrazor_key = ""
+# bloxroute_key = ""
+# nextblock_key = ""
+
+# -----------------------------------------------------------------------------
+# [strategy] — Instruments, nonce, discovery mode, execution
+# -----------------------------------------------------------------------------
+[strategy]
+# Base tokens to trade: mint, min delta for big-trades, min profit (quote units), notional range [min, max], grid steps
+instruments = [
+    { token_mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", min_delta_threshold = 1000, min_profit_quote_units = 0.005, notional_range = [10, 600], grid_steps = 20 },
+    # SOL/WSOL example:
+    # { token_mint = "So11111111111111111111111111111111111111112", min_delta_threshold = 500, min_profit_quote_units = 0.001, notional_range = [0.1, 10], grid_steps = 15 },
+]
+nonce_account_pubkey = "YourNonceAccountPubkey111111111111111111111111111"
+default_quote_mint = "So11111111111111111111111111111111111111112"
+execution_enabled = true
+geyser_watch_enabled = false
+polling_enabled = true
+poll_interval_ms = 1000
+
+# -----------------------------------------------------------------------------
+# [fees] — Transaction cost and optional profit-based third-party fee
+# -----------------------------------------------------------------------------
+[fees]
+compute_unit_limit = 500000
+priority_fee_lamports = 0
+relay_tip_sol = 0.00001
+# Optional: third-party fee as fraction of gross profit in SOL (e.g. 0.5 = 50%). If set, overrides relay_tip_sol for that trade.
+# third_party_fee_profit_pct = 0.5
+# sol_price_usd = 150.0

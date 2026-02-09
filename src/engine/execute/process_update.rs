@@ -1,7 +1,8 @@
 use chrono::Utc;
 use futures::{Stream, StreamExt, future::join_all};
 // Temporarily disabled: use helius_laserstream::SubscribeUpdate;
-use solana_relayer_adapter_rust::{Tips, ultra_submit};
+use solana_relayer_adapter_rust::Tips;
+use crate::submit_with_services;
 use solana_sdk::{
     system_instruction::advance_nonce_account,
     transaction::Transaction,
@@ -281,17 +282,13 @@ pub async fn process_single_trade_yellowstone(sub_update: yellowstone_grpc_proto
                 tx.sign(&**SIGNERS, recent_blockhash);
                 let submitted_tx_signature = bs58::encode(tx.signatures[0]).into_string();
 
-                // RPC-only submission
-                let jito_client = None;
-                let lil_jit_client = None;
-                let astra_client = None;
-                let helius_client = None;
-                let zslot_client = None;
-                let nozomi_client = None;
-                let brazor_client = None;
-                let service_name = "RPC";
+                let service_name = if crate::use_low_latency_submission() {
+                    "low-latency"
+                } else {
+                    "RPC"
+                };
 
-                ultra_submit(
+                submit_with_services(
                     Tips {
                         tip_sol_amount,
                         tip_addr_idx: 0,
@@ -305,15 +302,6 @@ pub async fn process_single_trade_yellowstone(sub_update: yellowstone_grpc_proto
                     instr_advance_nonce_account,
                     alts,
                     1,
-                    jito_client,
-                    lil_jit_client,
-                    astra_client,
-                    helius_client,
-                    None,  // NextBlock
-                    zslot_client,
-                    nozomi_client,
-                    brazor_client,
-                    None,  // BloxRoute
                 )
                 .await;
                 

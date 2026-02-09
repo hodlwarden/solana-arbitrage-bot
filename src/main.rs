@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use jupiter_arbitrage_bot_offchain::*;
 use chrono::Utc;
 use futures::StreamExt;
-use solana_relayer_adapter_rust::{Tips, ultra_submit};
+use solana_relayer_adapter_rust::Tips;
+use jupiter_arbitrage_bot_offchain::submit_with_services;
 use solana_sdk::signer::Signer;
 use solana_sdk::system_instruction::advance_nonce_account;
 use tokio::time::{interval, Duration};
@@ -252,22 +253,18 @@ async fn submit_polling_trade(
     let recent_blockhash = nonce_data.blockhash();
     let alts = fetch_alt(ix.address_lookup_table_addresses).await;
 
-    // RPC-only submission (no Jito/Helius/BloxRoute/etc.)
-    let jito_client = None;
-    let lil_jit_client = None;
-    let astra_client = None;
-    let helius_client = None;
-    let zslot_client = None;
-    let nozomi_client = None;
-    let brazor_client = None;
-
+    let service_desc = if jupiter_arbitrage_bot_offchain::use_low_latency_submission() {
+        "low-latency (Jito/Helius/etc.)"
+    } else {
+        "RPC"
+    };
     info!(
-        service = "RPC",
+        service = %service_desc,
         time = %Utc::now().format("%Y-%m-%d %H:%M:%S%.3f"),
         "Submitting transaction"
     );
 
-    ultra_submit(
+    submit_with_services(
         Tips {
             tip_sol_amount: tip_sol,
             tip_addr_idx: 0,
@@ -281,19 +278,10 @@ async fn submit_polling_trade(
         instr_advance_nonce_account,
         alts,
         1,
-        jito_client,
-        lil_jit_client,
-        astra_client,
-        helius_client,
-        None,
-        zslot_client,
-        nozomi_client,
-        brazor_client,
-        None,
     )
     .await;
 
-    info!(service = "RPC", "Transaction submitted");
+    info!(service = %service_desc, "Transaction submitted");
 }
 
 // =============================================================================

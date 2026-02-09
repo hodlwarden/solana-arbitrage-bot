@@ -36,7 +36,7 @@
 - **Dual discovery modes**
   - **Continuous polling** — Periodically fetches Jupiter quotes across configurable amount ranges and tokens.
   - **Big-trades monitor** — Subscribes to Yellowstone gRPC for large on-chain flows and reacts with quote simulation.
-- **RPC-only execution** — All transactions sent via your RPC/submit endpoint (no bundled relayer).
+- **Submission** — Default: RPC via your `submit_endpoint`. Optional **low-latency services**: Jito, Helius, Astralane, ZeroSlot, Nozomi, LilJit, BlockRazor, BloxRoute, NextBlock (set `submission_services` and API keys in config).
 - **Multi-token support** — Configure base tokens (e.g. USDC, SOL) with notional ranges, grid steps, and min-profit thresholds.
 - **Transaction cost awareness** — Estimates fee (compute, priority, tip) and SOL price to filter only profitable trades.
 - **Nonce-based submission** — Uses a durable nonce account for reliable transaction lifecycle.
@@ -90,7 +90,7 @@ Configuration is TOML-based. Example structure (see `Config.toml` in the repo fo
 | Section       | Purpose |
 |---------------|---------|
 | `[connection]` | `signer_keypair_path`, `rpc_endpoint`, `submit_endpoint`; optional `geyser_endpoint`, `geyser_auth_token` for Yellowstone. |
-| `[dex_api]`   | Jupiter API `endpoint` and optional `auth_token`. |
+| `[dex_api]`   | Jupiter API `endpoint` and optional `auth_token`; optional keys for low-latency submission: `jito_api_key`, `helius_api_key`, `astralane_key`, `zero_slot_key`, `nozomi_api_key`, `liljit_endpoint`, `blockrazor_key`, `bloxroute_key`, `nextblock_key`. |
 | `[strategy]`  | `instruments` (base tokens with mint, notional range, grid steps, min profit), `nonce_account_pubkey`, `default_quote_mint`, `polling_enabled` / `poll_interval_ms`, `geyser_watch_enabled`, `execution_enabled`. |
 | `[fees]`      | `compute_unit_limit`, `priority_fee_lamports`, `relay_tip_sol`; optional `third_party_fee_profit_pct` (e.g. `0.5` = 50% of gross profit in SOL); optional `sol_price_usd` fallback. |
 
@@ -125,6 +125,17 @@ third_party_fee_profit_pct = 0.5
 ```
 
 If `third_party_fee_profit_pct` is set and in range (0, 1], it overrides `relay_tip_sol` for that trade’s third-party fee; otherwise `relay_tip_sol` is used. Profit-based fee scales with opportunity size, so you can share a percentage of each trade’s profit with a relay or service instead of a fixed amount.
+
+---
+
+### Low-latency submission (Jito, Helius, etc.)
+
+By default, transactions are submitted via your RPC `submit_endpoint`. To use low-latency services instead (or in addition), set in config:
+
+1. **`[connection]`** — `submission_services = ["jito", "helius", "astralane", "zeroslot", "nozomi", "liljit", "blockrazor", "bloxroute", "nextblock"]` (list any subset).
+2. **`[dex_api]`** — The corresponding API key or endpoint for each service (e.g. `jito_api_key`, `helius_api_key`, `astralane_key`, `zero_slot_key`, `nozomi_api_key`, `liljit_endpoint`, `blockrazor_key`, `bloxroute_key`, `nextblock_key`).
+
+When at least one service is configured and its client is built successfully, the bot uses `ultra_submit_simple` to submit through those services; otherwise it falls back to RPC. The relayer adapter (`solana-relayer-adapter-rust`) is used under the hood.
 
 ---
 

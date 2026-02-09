@@ -14,6 +14,9 @@ pub struct NodeConfig {
     pub geyser_url: Option<String>,
     #[serde(rename = "geyser_auth_token", alias = "geyser_token", alias = "yellowstone_grpc_token", default)]
     pub geyser_token: Option<String>,
+    /// Low-latency submission services to use (e.g. ["jito", "helius", "astralane", "zeroslot", "nozomi", "liljit", "blockrazor", "bloxroute", "nextblock"]). When empty or absent, uses RPC only.
+    #[serde(rename = "submission_services", alias = "relayer_services", default)]
+    pub submission_services: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -26,6 +29,8 @@ pub struct SwapApiConfig {
     pub confirm_service: String,
     #[serde(default)]
     pub jito_api_key: String,
+    #[serde(rename = "helius_api_key", alias = "helius_key", default)]
+    pub helius_api_key: String,
     #[serde(default)]
     pub nozomi_api_key: String,
     #[serde(default)]
