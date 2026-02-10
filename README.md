@@ -6,7 +6,6 @@
 
 **Contact:** [Telegram — t.me/hodlwarden](https://t.me/hodlwarden)
 
-> **GitHub:** Add repository topics for discoverability: `solana-arbitrage-bot`, `solana`, `arbitrage`, `bot`, `dex`, `jupiter`, `rust`.
 
 ### How it works
 
