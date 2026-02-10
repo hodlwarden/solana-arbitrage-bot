@@ -6,6 +6,7 @@ description = "Solana arbitrage bot: discovers and executes profitable DEX swaps
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/hodlwarden/solana-arbitrage-bot"
 readme = "README.md"
+keywords = ["solana", "arbitrage", "bot", "dex", "jupiter"]
 
 [lib]
 name = "jupiter_arbitrage_bot_offchain"

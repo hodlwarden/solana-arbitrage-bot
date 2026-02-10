@@ -1,10 +1,12 @@
 # Solana Arbitrage Bot
 
-**A Solana arbitrage bot** built in Rust. Discovers and executes profitable DEX swap opportunities on Solana via the [Jupiter](https://jupiter.ag) aggregator. RPC-only execution (no Jito/BloxRoute). Supports **continuous quote polling** and optional **Yellowstone gRPC** big-trade monitoring.
+**Solana arbitrage bot** — a Rust bot that discovers and executes profitable DEX arbitrage on Solana. Discovers and executes profitable DEX swap opportunities on Solana via the [Jupiter](https://jupiter.ag) aggregator. RPC-only execution (no Jito/BloxRoute). Supports **continuous quote polling** and optional **Yellowstone gRPC** big-trade monitoring.
 
-*Keywords: solana arbitrage bot, Solana arbitrage, Jupiter arbitrage bot, DEX arbitrage Rust, Solana trading bot, Yellowstone gRPC, Jupiter API.*
+*Search: solana arbitrage bot · Solana arbitrage · Jupiter arbitrage bot · DEX arbitrage Rust · Solana trading bot · Yellowstone gRPC · Jupiter API.*
 
 **Contact:** [Telegram — t.me/hodlwarden](https://t.me/hodlwarden)
+
+> **GitHub:** Add repository topics for discoverability: `solana-arbitrage-bot`, `solana`, `arbitrage`, `bot`, `dex`, `jupiter`, `rust`.
 
 ### How it works
 
